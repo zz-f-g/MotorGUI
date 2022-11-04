@@ -1,4 +1,4 @@
-<h1><center>扩展设计一</center></h1>
+<h1><div align='center'>扩展设计一</div></h1>
 
 <div align='right'>2052110 郭子瞻</div>
 
@@ -104,6 +104,15 @@ T_{0} &= \frac{60}{2\pi n_{N}} \left[ U_{N}\left(I_{N} - \frac{U_{N}}{R_{f}}\rig
 \end{aligned} \right.
 $$
 
-因此，给定一组额定状态和电枢绕组、励磁绕组的电阻值，就可以得到电机的模型。
+因此，给定一组额定状态和电枢绕组、励磁绕组的电阻值，就可以得到电机的模型。对于题目中的数据：
+
+$$
+\begin{aligned}
+C'_{T} &= 0.551 \Omega \cdot \text{s} \\
+T_{0} &= 4.50 \text{N} \cdot \text{s}
+\end{aligned}
+$$
 
 ### 实验测量电路
+
+
