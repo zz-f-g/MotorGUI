@@ -7,6 +7,7 @@ matplotlib.use("TkAgg")
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from math import pi
+import random
 
 
 class DcMotor:
@@ -17,13 +18,14 @@ class DcMotor:
         self.Rf = 181.5
         self.U = 220
         self.T2 = 0
-        self.Tm = 3
+        self.error = 0.05
 
     @property
     def Omega(self) -> float:
         return self.Rf / self.CT \
-            - self.Rf**2*self.Ra/self.CT**2 * \
-            (self.T2 + self.T0) / self.U**2
+            - self.Rf**2*self.Ra/self.CT**2 \
+            * (self.T2 + self.T0) / self.U**2 \
+            * (1 + (2 * random.random() - 1) * self.error)
 
     @property
     def n(self) -> float:
@@ -31,7 +33,8 @@ class DcMotor:
 
     @property
     def Ia(self) -> float:
-        return (self.U - self.CT * self.U / self.Rf * self.Omega) / self.Ra
+        return (self.U - self.CT * self.U / self.Rf * self.Omega) / self.Ra \
+            * (1 + (2 * random.random() - 1) * self.error)
 
 
 class Ui:
