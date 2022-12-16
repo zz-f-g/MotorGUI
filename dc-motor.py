@@ -1,13 +1,14 @@
-import sys
-import tkinter as tk
 from tkinter import messagebox
-import numpy as np
-import matplotlib
-matplotlib.use("TkAgg")
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from math import pi
+import sys
 import random
+import json
+import tkinter as tk
+import numpy as np
+import matplotlib
+matplotlib.use("TkAgg")
 
 
 class DcMotor:
@@ -17,15 +18,32 @@ class DcMotor:
         self.Ra = 0.114
         self.Rf = 181.5
         self.U = 220
-        self.T2 = 0
+        self.T2 = 17e3/(3000 * 2 * pi / 60)
         self.error = 0.05
+        self.Tm = 5
+        with open(sys.path[0] + '/motor-config.json', 'r') as config:
+            data = json.load(config)
+            self.CT = (
+                60 * data['Rf'] / (2 * pi * data['nN'])
+                * (1 + data['Ra'] / data['Rf'] - data['IN'] * data['Ra'] / data['UN'])
+            )
+            self.T0 = (
+                60 / (2 * pi * data['nN'])
+                * (data['UN'] * (data['IN'] - data['UN'] / data['Rf'])
+                   * (1 + data['Ra'] / data['Rf'] - data['IN'] * data['Ra'] / data['UN'])
+                   - data['PN'])
+            )
+            self.Ra = data['Ra']
+            self.Rf = data['Rf']
+            self.U = data['UN']
+            self.T2 = data['PN'] / (data['nN'] * 2 * pi / 60)
+            self.error = data['error']
 
     @property
     def Omega(self) -> float:
         return self.Rf / self.CT \
             - self.Rf**2*self.Ra/self.CT**2 \
-            * (self.T2 + self.T0) / self.U**2 \
-            * (1 + (2 * random.random() - 1) * self.error)
+            * (self.T2 + self.T0) / self.U**2
 
     @property
     def n(self) -> float:
@@ -38,9 +56,11 @@ class DcMotor:
 
 
 class Ui:
+    def R2T2(self, i):
+        return 30 * self.T2max / i
+
     def __init__(self) -> None:
         self.M = DcMotor()
-        self.M.T2 = 17e3/(3000 * 2 * pi / 60)
         self.T2max = 95
 
         self.data = {}
@@ -116,7 +136,7 @@ class Ui:
             showvalue=False,
             command=self.getR
         )
-        self.scale_R.set(self.T2max / self.M.T2)
+        self.scale_R.set(self.R2T2(self.M.T2))
         self.scale_R.grid(row=4, column=0, columnspan=2)
 
         self.btn_sample = tk.Button(
@@ -160,14 +180,14 @@ class Ui:
                 messagebox.askretrycancel('错误', '输入的负载转矩超范围！')
                 return
             self.M.T2 = T2
-            self.scale_R.set(30 * self.T2max / T2)
+            self.scale_R.set(self.R2T2(T2))
             self.nstr.set('电机转速为\n%.0f r/min' % (self.M.n))
             self.Iastr.set('电枢电流为\n%.2f A' % (self.M.Ia))
         except:
             messagebox.askretrycancel('错误', '输入的负载转矩不合法！')
-    
+
     def getR(self, value) -> None:
-        self.M.T2 = 30 * self.T2max / float(value)
+        self.M.T2 = self.R2T2(float(value))
         self.T2str.set('%.2f' % self.M.T2)
         self.nstr.set('电机转速为\n%.0f r/min' % (self.M.n))
         self.Iastr.set('电枢电流为\n%.2f A' % (self.M.Ia))
@@ -175,7 +195,7 @@ class Ui:
     def sample(self) -> None:
         self.data['n'] = np.append(self.data['n'], self.M.n)
         self.data['Ia'] = np.append(self.data['Ia'], self.M.Ia)
-    
+
     def plot(self) -> None:
         self.figure = Figure((6, 6))
         self.draw = self.figure.add_subplot(1, 1, 1)
@@ -191,13 +211,14 @@ class Ui:
         A = np.vstack(
             [self.data['Ia'], np.ones(len(self.data['Ia']))]
         ).T
-        a, b = np.linalg.lstsq(A, self.data['n'], rcond=None)[0] # n = a * Ia + b
+        # n = a * Ia + b
+        a, b = np.linalg.lstsq(A, self.data['n'], rcond=None)[0]
         x = np.linspace(0, 150, 151)
         self.draw.plot(x, x * a + b)
-        self.draw.set_title('n = %.2f * Ia + %.2f' %(a, b))
+        self.draw.set_title('n = %.2f * Ia + %.2f' % (a, b))
         self.canvas_plot = FigureCanvasTkAgg(self.figure, self.root)
         self.canvas_plot.get_tk_widget().grid(row=0, column=4, rowspan=5)
-    
+
     def clear(self) -> None:
         self.data['n'] = np.array([])
         self.data['Ia'] = np.array([])
